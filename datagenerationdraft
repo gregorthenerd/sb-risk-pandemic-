@@ -1,0 +1,74 @@
+
+#initial sample size parameter
+#the final sample size will be slightly larger due to the percentages for rev dist not added to 100% due to rounding in the source data
+ss <- 100
+
+#generation of annual business revenue data, percentages found in table 1
+sb_rev_less_100k <- rnorm(n=.20*ss, mean = 50000, sd = 20000)
+sb_rev_less_1mm <- rnorm(n=.51*ss, mean = 500000, sd = 200000)
+sb_rev_less_10mm <- rnorm(n=.26*ss, mean = 5000000, sd = 2000000)
+sb_rev_more_10mm <- rnorm(n=.04*ss, mean = 13000000, sd = 2000000)
+
+sb_rev <- c(sb_rev_less_100k, sb_rev_less_1mm, sb_rev_less_10mm, sb_rev_more_10mm)
+#adjusting sample size for the slight inflation that occurs  
+ss <- length(sb_rev)
+
+#generation of phased based revenue effects
+sb_rev_ld_effect <- rnorm(n=ss, mean = -.6, sd = .2)
+sb_rev_sd_effect <- rnorm(n=ss, mean = -.25, sd = .2)
+
+#generation of profit margin data
+sb_pm <- rnorm(n=ss, mean = 0.07, sd = 0.03)
+
+#generation of dataframe with aggerated data 
+sb_df <- data.frame(RevAn=sb_rev, RevEffectLD = sb_rev_ld_effect, RevEffectSD = sb_rev_sd_effect, PM = sb_pm )
+
+#monthly revenue data
+sb_df$RevMonthly <- sb_df$RevAn/12
+
+#pre pandemic expenses
+sb_df$ExpMonthly <- -sb_df$PM*sb_df$RevMonthly+sb_df$RevMonthly
+
+#pre pandemic profit
+sb_df$ProfitMonthly <- sb_df$RevMonthly-sb_df$Exp
+
+#generation of phased based expense effects
+sb_lockdown_phase_exp <- rnorm(n=ss, mean=-.5, sd=.2)
+sb_df$ExpEffectLD <- sb_lockdown_phase_exp
+sb_socialdist_phase_exp <- rnorm(n=ss, mean =-.2, sd=.1)
+sb_df$ExpEffectSD <- sb_socialdist_phase_exp
+
+#lock down revenue 
+sb_df$RevMonthlyLD <- 0
+#looping over the rows to calculate the monthly post pandemic revenue, the sign of the $RevEffectLD column indicates if the firm is a gaining or losing type
+#in either case, simply adding the value found from multiplying the monthly revenue by the percent change yields the adjusted revenue
+for (i in 1:dim(sb_df)[1]) {
+    sb_df$RevMonthlyLD[i] <- sb_df$RevMonthly[i]+(sb_df$RevMonthly[i]*sb_df$RevEffectLD[i])
+}
+
+#lockdown expenses
+for (i in 1:dim(sb_df)[1]) {
+  sb_df$ExpMonthlyLD[i] <- sb_df$ExpMonthly[i]+(sb_df$ExpEffectLD[i]*sb_df$ExpEffectLD[i])
+}
+
+#lockdown profit
+sb_df$ProfitMonthlyLD <- sb_df$RevMonthlyLD-sb_df$ExpMonthlyLD
+
+
+
+#social distancing revenue 
+sb_df$RevMonthlySD <- 0
+for (i in 1:dim(sb_df)[1]) {
+  sb_df$RevMonthlySD[i] <- sb_df$RevMonthly[i]+(sb_df$RevMonthly[i]*sb_df$RevEffectSD[i])
+}
+
+#social distancing expenses
+for (i in 1:dim(sb_df)[1]) {
+  sb_df$ExpMonthlySD[i] <- sb_df$ExpMonthly[i]+(sb_df$ExpEffectSD[i]*sb_df$ExpEffectSD[i])
+}
+
+#social distancing profit
+sb_df$ProfitMonthlySD <- sb_df$RevMonthlySD-sb_df$ExpMonthlySD
+
+
+
